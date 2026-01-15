@@ -1,0 +1,40 @@
+[33mcommit c341b563e3602a3bf526cc01b361f4f934bc57bb[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: LuwisGarza <luisangelgarciaalvarez28@gmail.com>
+Date:   Sat Jan 10 09:48:02 2026 -0400
+
+    Dashboard mas bonito v3
+
+app/Http/Controllers/ExpedientController.php
+app/Http/Controllers/PersonaController.php
+app/Http/Requests/ProfileUpdateRequest.php
+app/Models/Asistencia.php
+app/Models/DatosMilitares.php
+app/Models/DetalleIndisponibilidad.php
+app/Models/EstadoAsistencia.php
+app/Models/JerarquiaMilitar.php
+app/Models/OrigenStatus_3_6_0.php
+app/Models/Persona.php
+app/Models/TurnoPermiso.php
+database/migrations/2026_01_02_202832_create_expedients_3_6_0_table.php
+database/migrations/2026_01_04_145036_create_expedients_3_6_0_table.php
+database/migrations/2026_01_08_190247_create_persona_table.php
+database/migrations/2026_01_08_193134_create_jerarquia_militar_table.php
+database/migrations/2026_01_08_193506_create_estado_asistencia_table.php
+database/migrations/2026_01_08_193737_create_turno_permiso_table.php
+database/migrations/2026_01_08_194729_create_datos_militares_table.php
+database/migrations/2026_01_08_194956_create_asistencia_table.php
+database/migrations/2026_01_08_195217_create_detalle_indisponibilidad_table.php
+database/seeders/JerarquiaMilitarSeeder.php
+lang/en/auth.php
+lang/en/pagination.php
+lang/en/passwords.php
+package-lock.json
+package.json
+resources/js/Layouts/AuthenticatedLayout.jsx
+resources/js/Pages/Dashboard.jsx
+resources/js/Pages/Expedients/Create.jsx
+resources/js/Pages/Personas/Create.jsx
+resources/js/Pages/Personas/Edit.jsx
+resources/js/Pages/Personas/Index.jsx
+resources/js/Pages/Welcome.jsx
+routes/web.php

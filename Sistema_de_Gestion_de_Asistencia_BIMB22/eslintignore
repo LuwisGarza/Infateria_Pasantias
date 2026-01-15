@@ -1,0 +1,7 @@
+vendor
+public
+storage
+node_modules
+bootstrap
+dist
+build

@@ -1,0 +1,46 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2022": true,
+    "node": true
+  },
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": { "jsx": true }
+  },
+  "settings": {
+    "react": { "version": "detect" },
+    "import/resolver": {
+      "alias": {
+        "map": [["@", "./resources/js"]],
+        "extensions": [".js", ".jsx", ".json"]
+      }
+    }
+  },
+  "plugins": ["react", "react-hooks", "jsx-a11y", "prettier"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:jsx-a11y/recommended",
+    "plugin:prettier/recommended",
+    "prettier"
+  ],
+  "rules": {
+    "prettier/prettier": "warn",
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "off",
+    "jsx-a11y/anchor-is-valid": "off"
+  },
+  "ignorePatterns": [
+    "vendor/",
+    "public/",
+    "storage/",
+    "node_modules/",
+    "bootstrap/",
+    "dist/",
+    "build/"
+  ]
+}
