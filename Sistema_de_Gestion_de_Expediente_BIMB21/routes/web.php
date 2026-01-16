@@ -32,7 +32,7 @@ Route::middleware('auth')->group(function () {
 
 // 2. Expedientes (solo autenticacion)
 Route::middleware(['auth'])->group(function () {
-    Route::resource('expedients', ExpedientController::class);
+    Route::resource('expedientes', ExpedientController::class);
 });
 
 // 3. Personas (autenticacion + verificación de email)
