@@ -11,8 +11,8 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     // Implementación de HasFactory y Notifiable para el modelo User
-    use HasFactory, Notifiable, HasRoles;
-
+    use HasFactory, Notifiable;
+    use HasRoles;
     /**
      * @var list<string>
      */

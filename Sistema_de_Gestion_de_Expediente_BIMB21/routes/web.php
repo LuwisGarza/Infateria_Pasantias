@@ -35,10 +35,22 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('expedients', ExpedientController::class);
 });
 
-// 3. Personas
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::resource('personas', PersonaController::class);
+// 3. Ruta protegida por PERMISO específico (RECOMENDADO)
+Route::middleware(['auth', 'verified', 'permission:personas.view'])->group(function () {
+    Route::get('/personas', [PersonaController::class, 'index']);
+    Route::get('/personas/{persona}', [PersonaController::class, 'show']);
 });
+Route::get('/personas/{persona}', [PersonaController::class, 'show'])
+    ->middleware(['auth', 'verified', 'permission:personas.view'])
+    ->name('personas.show');
+
+Route::get('/personas/create', [PersonaController::class, 'create'])
+    ->middleware(['auth', 'verified', 'permission:personas.create'])
+    ->name('personas.create');
+
+Route::post('/personas', [PersonaController::class, 'store'])
+    ->middleware(['auth', 'verified', 'permission:personas.create'])
+    ->name('personas.store');
 
 // 4. Backups
 Route::middleware(['auth', 'verified'])->group(function () {
