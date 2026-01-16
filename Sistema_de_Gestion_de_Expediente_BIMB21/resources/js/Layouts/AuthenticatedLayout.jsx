@@ -1,5 +1,4 @@
 import ApplicationLogo from "@/Components/ApplicationLogo";
-import Dropdown from "@/Components/Dropdown";
 import { Link, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import {
@@ -17,29 +16,62 @@ import {
     User,
     CheckCircle,
     XCircle,
-    HardDrive, // ✅ ÍCONO PARA BACKUPS AÑADIDO
+    HardDrive,
 } from "lucide-react";
 
 export default function AuthenticatedLayout({ header, children }) {
-    const { auth, personasCount } = usePage().props;
+    const { auth, url } = usePage().props; // ✅ Obtener URL actual
     const user = auth.user;
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [activeMenu, setActiveMenu] = useState("dashboard");
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
 
-    // Menú de navegación
+    // Detectar ruta actual al cargar y cuando cambie la URL
+    useEffect(() => {
+        const currentPath = window.location.pathname;
+
+        // Mapeo de rutas a IDs del menú
+        const routeToMenuId = {
+            "/dashboard": "dashboard",
+            "/personas": "personas",
+            "/asistencias": "asistencias",
+            "/jerarquias": "jerarquias",
+            "/permisos": "permisos",
+            "/reportes": "reportes",
+            "/backups": "backups",
+            // Agrega más rutas según necesites
+        };
+
+        // Encontrar el ID del menú basado en la ruta actual
+        const matchedRoute = Object.keys(routeToMenuId).find((route) =>
+            currentPath.startsWith(route),
+        );
+
+        if (matchedRoute) {
+            setActiveMenu(routeToMenuId[matchedRoute]);
+        } else {
+            // Si no coincide, usar la ruta base
+            const basePath = currentPath.split("/")[1];
+            if (basePath) {
+                setActiveMenu(basePath);
+            }
+        }
+    }, [url]); // ✅ Se ejecuta cuando cambia la URL
+
+    // Menú de navegación - actualizado con rutas exactas
     const menuItems = [
         {
             id: "dashboard",
             label: "Información General",
             icon: Home,
-            href: route("dashboard"),
-            badge: null,
+            href: "/dashboard",
+            exact: true,
         },
         {
             id: "personas",
             label: "Personal",
             icon: Users,
-            href: route("personas.index"),
+            href: "/personas",
         },
         {
             id: "asistencias",
@@ -65,18 +97,39 @@ export default function AuthenticatedLayout({ header, children }) {
             icon: BarChart3,
             href: "/reportes",
         },
-        // ✅ MÓDULO DE BACKUPS AÑADIDO
         {
             id: "backups",
             label: "Mantenimiento",
             icon: HardDrive,
-            href: route("backups.index"),
+            href: "/backups",
         },
     ];
 
+    // Función para verificar si un ítem está activo
+    const isActive = (item) => {
+        return activeMenu === item.id;
+    };
+
+    // Cerrar dropdown al hacer clic fuera de él
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                showUserDropdown &&
+                !event.target.closest(".user-dropdown-container")
+            ) {
+                setShowUserDropdown(false);
+            }
+        };
+
+        document.addEventListener("click", handleClickOutside);
+        return () => {
+            document.removeEventListener("click", handleClickOutside);
+        };
+    }, [showUserDropdown]);
+
     return (
         <div className="d-flex min-vh-100 bg-light">
-            {/* 🎯 SIDEBAR VERTICAL IZQUIERDA - Bootstrap */}
+            {/* SIDEBAR */}
             <div
                 className={`
                 fixed-top start-0 h-100 z-50
@@ -138,23 +191,18 @@ export default function AuthenticatedLayout({ header, children }) {
                         {menuItems.map((item) => (
                             <li key={item.id} className="nav-item">
                                 <Link
-                                    href={item.href || "#"}
+                                    href={item.href}
                                     onClick={() => setActiveMenu(item.id)}
                                     className={`
                                         nav-link d-flex align-items-center rounded-2
                                         text-white text-decoration-none py-3 px-3
-                                        ${
-                                            activeMenu === item.id
-                                                ? "bg-primary"
-                                                : "hover-bg-gray-800"
-                                        }
+                                        ${isActive(item) ? "bg-primary" : "hover-bg-gray-800"}
                                         transition-colors
                                     `}
                                     style={{
-                                        backgroundColor:
-                                            activeMenu === item.id
-                                                ? "#0d6efd"
-                                                : "transparent",
+                                        backgroundColor: isActive(item)
+                                            ? "#0d6efd"
+                                            : "transparent",
                                         minHeight: "48px",
                                     }}
                                 >
@@ -167,25 +215,19 @@ export default function AuthenticatedLayout({ header, children }) {
                                             {item.label}
                                         </span>
                                     )}
-                                    {item.badge && !sidebarCollapsed && (
-                                        <span className="badge bg-secondary ms-2">
-                                            {item.badge}
-                                        </span>
-                                    )}
                                 </Link>
                             </li>
                         ))}
                     </ul>
 
-                    {/* Separador */}
                     <div className="px-3 py-4">
                         <hr className="border-secondary my-0" />
                     </div>
                 </nav>
 
-                {/* Perfil de Usuario - Dropdown de Bootstrap */}
-                <div className="border-top border-secondary p-3">
-                    <div className="d-flex align-items-center">
+                {/* Perfil de Usuario con Dropdown */}
+                <div className="border-top border-secondary p-3 user-dropdown-container">
+                    <div className="d-flex align-items-center position-relative">
                         <div
                             className="bg-primary rounded-circle d-flex align-items-center justify-content-center"
                             style={{ width: "40px", height: "40px" }}
@@ -193,22 +235,23 @@ export default function AuthenticatedLayout({ header, children }) {
                             <User className="text-white" size={20} />
                         </div>
                         {!sidebarCollapsed && (
-                            <div className="flex-grow-1 ms-3 min-w-0">
-                                <p className="mb-0 fw-medium text-truncate">
-                                    {user.name}
-                                </p>
-                                <p className="mb-0 small text-muted text-truncate">
-                                    {user.email}
-                                </p>
-                            </div>
-                        )}
-                        {!sidebarCollapsed && (
-                            <div className="dropdown">
+                            <>
+                                <div className="flex-grow-1 ms-3 min-w-0">
+                                    <p className="mb-0 fw-medium text-truncate">
+                                        {user.name}
+                                    </p>
+                                    <p className="mb-0 small text-muted text-truncate">
+                                        {user.email}
+                                    </p>
+                                </div>
+                                {/* Botón dropdown para mostrar/ocultar menú */}
                                 <button
                                     className="btn btn-link text-light p-0"
                                     type="button"
-                                    data-bs-toggle="dropdown"
-                                    aria-expanded="false"
+                                    onClick={() =>
+                                        setShowUserDropdown(!showUserDropdown)
+                                    }
+                                    aria-expanded={showUserDropdown}
                                 >
                                     <svg
                                         className="h-5 w-5"
@@ -222,35 +265,50 @@ export default function AuthenticatedLayout({ header, children }) {
                                         />
                                     </svg>
                                 </button>
-                                <ul className="dropdown-menu dropdown-menu-end shadow">
-                                    <li>
-                                        <Link
-                                            className="dropdown-item d-flex align-items-center"
-                                            href={route("profile.edit")}
-                                        >
-                                            <User className="me-2" size={16} />
-                                            Perfil
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <hr className="dropdown-divider" />
-                                    </li>
-                                    <li>
-                                        <Link
-                                            className="dropdown-item d-flex align-items-center text-danger"
-                                            href={route("logout")}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            <LogOut
-                                                className="me-2"
-                                                size={16}
-                                            />
-                                            Cerrar Sesión
-                                        </Link>
-                                    </li>
-                                </ul>
-                            </div>
+
+                                {/* Dropdown Menu */}
+                                {showUserDropdown && (
+                                    <div
+                                        className="position-absolute end-0 bottom-100 mb-2 bg-white rounded shadow-lg"
+                                        style={{
+                                            minWidth: "200px",
+                                            zIndex: 1000,
+                                        }}
+                                    >
+                                        <div className="p-2">
+                                            <Link
+                                                className="dropdown-item d-flex align-items-center text-dark text-decoration-none py-2 px-3 rounded"
+                                                href={route("profile.edit")}
+                                                onClick={() =>
+                                                    setShowUserDropdown(false)
+                                                }
+                                            >
+                                                <User
+                                                    className="me-2"
+                                                    size={16}
+                                                />
+                                                Editar Perfil
+                                            </Link>
+                                            <hr className="my-2" />
+                                            <Link
+                                                className="dropdown-item d-flex align-items-center text-danger text-decoration-none py-2 px-3 rounded"
+                                                href={route("logout")}
+                                                method="post"
+                                                as="button"
+                                                onClick={() =>
+                                                    setShowUserDropdown(false)
+                                                }
+                                            >
+                                                <LogOut
+                                                    className="me-2"
+                                                    size={16}
+                                                />
+                                                Cerrar Sesión
+                                            </Link>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -264,7 +322,6 @@ export default function AuthenticatedLayout({ header, children }) {
                     transition: "margin-left 0.3s ease-in-out",
                 }}
             >
-                {/* Header Superior */}
                 {header && (
                     <header className="bg-white shadow-sm border-bottom">
                         <div className="container-fluid py-3">
@@ -290,50 +347,8 @@ export default function AuthenticatedLayout({ header, children }) {
                     </header>
                 )}
 
-                {/* Contenido de la Página */}
                 <main className="container-fluid py-4">{children}</main>
             </div>
-
-            {/* Estilos CSS personalizados para el sidebar */}
-            <style>{`
-                .hover-bg-gray-800:hover {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
-                }
-
-                .sidebar-expanded {
-                    width: 256px;
-                }
-
-                .sidebar-collapsed {
-                    width: 80px;
-                }
-
-                .nav-link {
-                    transition: all 0.2s ease;
-                }
-
-                .nav-link:hover {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
-                }
-
-                /* Scrollbar personalizada para el sidebar */
-                nav::-webkit-scrollbar {
-                    width: 4px;
-                }
-
-                nav::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-
-                nav::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.2);
-                    border-radius: 2px;
-                }
-
-                nav::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.3);
-                }
-            `}</style>
         </div>
     );
 }
