@@ -105,7 +105,7 @@ export default function Welcome() {
 
                             <h1 className="text-white fw-bold mb-3">
                                 <span className="text-primary">Sistema </span>
-                                Gestor de Asistencia
+                                Gestor de Expedientes Digitales
                             </h1>
                             <p className="text-light opacity-75">
                                 Cargando experiencia optimizada...

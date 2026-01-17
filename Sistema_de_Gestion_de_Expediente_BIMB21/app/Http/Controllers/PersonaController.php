@@ -15,29 +15,18 @@ class PersonaController extends Controller
      */
     public function __construct()
     {
-        // Aplicar middleware de autenticación a todas las acciones
         $this->middleware(['auth', 'verified']);
-
-        // Protección específica por permisos
-        $this->middleware('permission:personas.view')->only(['index', 'show']);
+        $this->middleware('permission:personas.view')->only(['index', 'show', 'estadisticas']);
         $this->middleware('permission:personas.create')->only(['create', 'store']);
         $this->middleware('permission:personas.edit')->only(['edit', 'update']);
         $this->middleware('permission:personas.delete')->only(['destroy']);
-        $this->middleware('permission:personas.view')->only(['estadisticas']);
-
-        // Nota: El permiso 'personas.edit' no existe en tu lista actual
-        // Puedes crearlo o usar otro permiso existente como 'personas.create'
-        // Te recomiendo crear el permiso 'personas.edit' con:
-        // php artisan permission:create-permission personas.edit
     }
 
     /**
      * Mostrar lista de personas
-     * Requiere: personas.view
      */
     public function index()
     {
-        // El middleware ya validó el permiso, pero por si acaso:
         if (!Auth::user()->hasPermissionTo('personas.view')) {
             abort(403, 'No tienes permiso para ver personas');
         }
@@ -46,7 +35,7 @@ class PersonaController extends Controller
 
         return Inertia::render('Personas/Index', [
             'personas' => $personas,
-            'can' => [ // Pasar permisos específicos al frontend
+            'can' => [
                 'create' => Auth::user()->hasPermissionTo('personas.create'),
                 'edit' => Auth::user()->hasPermissionTo('personas.edit'),
                 'delete' => Auth::user()->hasPermissionTo('personas.delete'),
@@ -56,11 +45,9 @@ class PersonaController extends Controller
 
     /**
      * Mostrar formulario de creación
-     * Requiere: personas.create
      */
     public function create()
     {
-        // Verificación adicional
         if (!Auth::user()->hasPermissionTo('personas.create')) {
             abort(403, 'No tienes permiso para crear personas');
         }
@@ -69,8 +56,7 @@ class PersonaController extends Controller
     }
 
     /**
-     * Almacenar nueva persona
-     * Requiere: personas.create
+     * Almacenar nueva persona - VALIDACIONES VENEZOLANAS
      */
     public function store(Request $request)
     {
@@ -92,39 +78,67 @@ class PersonaController extends Controller
                 'regex:/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s\'-]+$/u'
             ],
             'cedula' => [
-                'nullable',
+                'required', // En Venezuela la cédula es obligatoria
                 'string',
-                'max:13',
-                'regex:/^\d{3}-\d{7}-\d{1}$/',
+                'max:15',
+                // Acepta: V-12345678, E-12345678, 12345678 (7-9 dígitos)
+                'regex:/^(V|E|v|e)?-?\d{7,9}$/',
                 Rule::unique('persona', 'cedula')->where(function ($query) {
                     return $query->whereNull('deleted_at');
                 }),
             ],
             'fecha_nacimiento' => [
-                'nullable',
+                'required',
                 'date',
-                'regex:/^\d{4}-\d{2}-\d{2}$/',
+                // Acepta: DD/MM/AAAA (formato venezolano)
+                'regex:/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/',
+                'before_or_equal:today',
+                function ($attribute, $value, $fail) {
+                    // Validar fecha real (ej: no 31/02/2023)
+                    $parts = explode('/', $value);
+                    if (count($parts) === 3 && !checkdate($parts[1], $parts[0], $parts[2])) {
+                        $fail('La fecha de nacimiento no es válida.');
+                    }
+
+                    // Edad mínima (15 años) y máxima (120 años)
+                    $birthDate = \DateTime::createFromFormat('d/m/Y', $value);
+                    $today = new \DateTime();
+                    $age = $today->diff($birthDate)->y;
+
+                    if ($age < 15) {
+                        $fail('La persona debe tener al menos 15 años.');
+                    }
+                    if ($age > 120) {
+                        $fail('La edad no puede ser mayor a 120 años.');
+                    }
+                }
             ],
             'direccion' => 'nullable|string|max:255',
             'telefono' => [
-                'nullable',
+                'required',
                 'string',
                 'max:20',
-                'regex:/^(\+1[\s\-]?)?(809|829|849)[\s\-]?\d{3}[\s\-]?\d{4}$/',
+                // Acepta: 0414-1234567, 04121234567, +58-414-1234567, (0241) 1234567
+                'regex:/^(\+58[\s\-]?)?(0?(2(41|42|43|44|45|46|47|48)|4(12|14|16|24|26))[\s\-]?)?\d{3}[\s\-]?\d{4}$/',
             ],
             'rango_militar' => [
                 'nullable',
                 'string',
                 'max:100',
-                'regex:/^[A-Za-z0-9\-\s\.\,]+$/'
+                'regex:/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\-\s\.\,]+$/u'
             ],
         ], [
             'nombres.regex' => 'El nombre solo puede contener letras, espacios, apóstrofes (\') y guiones (-)',
-            'apellidos.regex' => 'Los apellidos solo pueden contener letras, espacios, apóstrofes (\') y guiones (-)',
-            'cedula.regex' => 'La cédula debe tener el formato: 000-0000000-0',
-            'fecha_nacimiento.regex' => 'La fecha debe tener el formato: AAAA-MM-DD',
-            'telefono.regex' => 'El teléfono debe ser un número dominicano válido (809, 829, 849). Ejemplo: 809-123-4567',
-            'rango_militar.regex' => 'El rango militar contiene caracteres no permitidos. Solo letras, números, guiones, puntos y comas.',
+            'apellidos.regex' => 'Los apellidos solo pueden contener letras, espacios, apóstrofes (\') y guientes (-)',
+            'cedula.required' => 'La cédula es obligatoria en Venezuela.',
+            'cedula.regex' => 'Formato de cédula venezolana inválido. Ejemplos válidos: V-12345678, E-87654321, 12345678',
+            'cedula.unique' => 'Esta cédula ya está registrada en el sistema.',
+            'fecha_nacimiento.required' => 'La fecha de nacimiento es obligatoria.',
+            'fecha_nacimiento.regex' => 'La fecha debe tener formato DD/MM/AAAA (ej: 15/07/1990).',
+            'fecha_nacimiento.before_or_equal' => 'La fecha no puede ser futura.',
+            'telefono.required' => 'El teléfono es obligatorio.',
+            'telefono.regex' => 'Formato de teléfono venezolano inválido. Ejemplos: 0414-1234567, 0241-1234567, +58-414-1234567',
+            'rango_militar.regex' => 'El rango militar contiene caracteres no permitidos.',
         ]);
 
         Persona::create(array_merge($validated, [
@@ -137,7 +151,6 @@ class PersonaController extends Controller
 
     /**
      * Mostrar detalles de una persona
-     * Requiere: personas.view
      */
     public function show(Persona $persona)
     {
@@ -152,7 +165,6 @@ class PersonaController extends Controller
 
     /**
      * Mostrar formulario de edición
-     * Requiere: personas.edit
      */
     public function edit(Persona $persona)
     {
@@ -166,8 +178,7 @@ class PersonaController extends Controller
     }
 
     /**
-     * Actualizar persona
-     * Requiere: personas.edit
+     * Actualizar persona - VALIDACIONES VENEZOLANAS
      */
     public function update(Request $request, Persona $persona)
     {
@@ -189,10 +200,10 @@ class PersonaController extends Controller
                 'regex:/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s\'-]+$/u'
             ],
             'cedula' => [
-                'nullable',
+                'required',
                 'string',
-                'max:13',
-                'regex:/^\d{3}-\d{7}-\d{1}$/',
+                'max:15',
+                'regex:/^(V|E|v|e)?-?\d{7,9}$/',
                 Rule::unique('persona', 'cedula')
                     ->where(function ($query) {
                         return $query->whereNull('deleted_at');
@@ -200,30 +211,48 @@ class PersonaController extends Controller
                     ->ignore($persona->persona_id, 'persona_id'),
             ],
             'fecha_nacimiento' => [
-                'nullable',
+                'required',
                 'regex:/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/',
+                'before_or_equal:today',
+                function ($attribute, $value, $fail) {
+                    $parts = explode('/', $value);
+                    if (count($parts) === 3 && !checkdate($parts[1], $parts[0], $parts[2])) {
+                        $fail('La fecha de nacimiento no es válida.');
+                    }
+
+                    $birthDate = \DateTime::createFromFormat('d/m/Y', $value);
+                    $today = new \DateTime();
+                    $age = $today->diff($birthDate)->y;
+
+                    if ($age < 15) {
+                        $fail('La persona debe tener al menos 15 años.');
+                    }
+                    if ($age > 120) {
+                        $fail('La edad no puede ser mayor a 120 años.');
+                    }
+                }
             ],
             'direccion' => 'nullable|string|max:255',
             'telefono' => [
-                'nullable',
+                'required',
                 'string',
                 'max:20',
-                'regex:/^(\+1[\s\-]?)?(809|829|849)[\s\-]?\d{3}[\s\-]?\d{4}$/',
+                'regex:/^(\+58[\s\-]?)?(0?(2(41|42|43|44|45|46|47|48)|4(12|14|16|24|26))[\s\-]?)?\d{3}[\s\-]?\d{4}$/',
             ],
             'rango_militar' => [
                 'nullable',
                 'string',
                 'max:100',
-                'regex:/^[A-Za-z0-9\-\s\.\,]+$/'
+                'regex:/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\-\s\.\,]+$/u'
             ],
             'activo' => 'boolean',
         ], [
             'nombres.regex' => 'El nombre solo puede contener letras, espacios, apóstrofes (\') y guiones (-)',
             'apellidos.regex' => 'Los apellidos solo pueden contener letras, espacios, apóstrofes (\') y guiones (-)',
-            'cedula.regex' => 'La cédula debe tener el formato: 000-0000000-0',
-            'fecha_nacimiento.regex' => 'La fecha debe tener el formato DD/MM/AAAA (ej: 25/12/1990).',
-            'telefono.regex' => 'El teléfono debe ser un número dominicano válido (809, 829, 849). Ejemplo: 809-123-4567',
-            'rango_militar.regex' => 'El rango militar contiene caracteres no permitidos. Solo letras, números, guiones, puntos y comas.',
+            'cedula.regex' => 'Formato de cédula venezolana inválido. Ejemplos: V-12345678, E-87654321, 12345678',
+            'fecha_nacimiento.regex' => 'La fecha debe tener formato DD/MM/AAAA (ej: 25/12/1990).',
+            'telefono.regex' => 'Formato de teléfono venezolano inválido. Ejemplos: 0414-1234567, 0241-1234567, +58-414-1234567',
+            'rango_militar.regex' => 'El rango militar contiene caracteres no permitidos.',
         ]);
 
         $persona->update($validated);
@@ -234,7 +263,6 @@ class PersonaController extends Controller
 
     /**
      * Eliminar persona (soft delete)
-     * Requiere: personas.delete
      */
     public function destroy(Persona $persona)
     {
@@ -242,7 +270,7 @@ class PersonaController extends Controller
             abort(403, 'No tienes permiso para eliminar personas');
         }
 
-        $persona->delete(); // soft delete
+        $persona->delete();
 
         return redirect()->route('personas.index')
             ->with('success', 'Persona eliminada exitosamente.');
@@ -250,7 +278,6 @@ class PersonaController extends Controller
 
     /**
      * Obtener estadísticas
-     * Requiere: personas.view
      */
     public function estadisticas()
     {
